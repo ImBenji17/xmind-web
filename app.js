@@ -104,11 +104,18 @@ function maskSensitive(text) {
   return maskPhone(maskEmail(text));
 }
 
+function normalizeLevel(levelRaw) {
+  if (!levelRaw || typeof levelRaw !== "string") return "LV0";
+  const match = levelRaw.match(/LV\\d+/i);
+  return match ? match[0].toUpperCase() : "LV0";
+}
+
 function parseGroupRow(rawTitle, totalMembers) {
   let cleaned = cleanTitle(rawTitle || "");
   cleaned = cleaned.replace(/(\d{1,2}\/\d{1,2})(?=\S)/g, "$1 ");
   cleaned = cleaned.replace(/(\d{1,2}\/\d{1,2})/g, " $1 ");
   cleaned = cleaned.replace(/\s+/g, " ").trim();
+  const levelMatch = cleaned.match(/LV\d+/i);
   const parts = cleaned.split(/\s+/);
   const ingreso = parts.find((part) => /\d{1,2}\/\d{1,2}/.test(part)) || (parts[0] || "");
   const emailIndex = parts.findIndex((part) => /@/.test(part));
@@ -133,6 +140,7 @@ function parseGroupRow(rawTitle, totalMembers) {
     montoCandidate = matchNum ? matchNum[1] : "";
   }
   const nivelRaw =
+    (levelMatch ? levelMatch[0] : "") ||
     parts.find((part) => /^LV\d+/i.test(part)) ||
     parts.find((part) => /^LV\d+:?$/i.test(part)) ||
     parts.find((part) => /^LV\d+/i.test(part)) ||
@@ -146,7 +154,7 @@ function parseGroupRow(rawTitle, totalMembers) {
   if (match) {
     monto = `${match[1]} USDT`;
   }
-  const nivel = nivelRaw;
+  const nivel = normalizeLevel(nivelRaw);
 
   return {
     ingreso,
@@ -169,6 +177,30 @@ function countDescendants(topic) {
   return count;
 }
 
+function countDirectChildren(topic) {
+  const children = iterChildTopics(topic.children);
+  return children.filter((child) => !isRedText(child.style)).length;
+}
+
+function collectAllNodes(root) {
+  const nodes = [];
+  const visit = (node, parent) => {
+    if (!isRedText(node.style)) {
+      nodes.push({
+        title: cleanTitle(node.title),
+        parentTitle: parent ? cleanTitle(parent.title) : "",
+        parentTotal: parent ? countDescendants(parent) : countDescendants(node),
+        isRoot: !parent,
+        directCount: countDirectChildren(node),
+      });
+    }
+    const children = iterChildTopics(node.children);
+    children.forEach((child) => visit(child, node));
+  };
+  visit(root, null);
+  return nodes;
+}
+
 function collectGreenGroups(root, sheetTitle) {
   const groups = [];
   const stack = [root];
@@ -179,6 +211,7 @@ function collectGreenGroups(root, sheetTitle) {
         sheet: sheetTitle,
         title: cleanTitle(node.title),
         count: countDescendants(node),
+        directCount: countDirectChildren(node),
       });
     }
     iterChildTopics(node.children).forEach((child) => stack.push(child));
@@ -209,6 +242,7 @@ function App() {
   const [results, setResults] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState("desc");
 
   const handleFile = async (event) => {
     const file = event.target.files?.[0];
@@ -218,6 +252,7 @@ function App() {
     setError("");
     setResults(null);
     setFileName(file.name);
+    setActiveTab("desc");
 
     try {
       const buffer = await file.arrayBuffer();
@@ -229,6 +264,7 @@ function App() {
         const sheetResults = [];
         let total = 0;
         let greenGroups = [];
+        let allNodes = [];
 
         sheets.forEach((sheet) => {
           const title = sheet.title || "Sin título";
@@ -237,6 +273,7 @@ function App() {
           sheetResults.push({ sheet: title, childCount });
           total += childCount;
           greenGroups = greenGroups.concat(collectGreenGroups(root, title));
+          allNodes = allNodes.concat(collectAllNodes(root));
         });
 
         greenGroups.sort((a, b) => b.count - a.count);
@@ -246,6 +283,7 @@ function App() {
           sheetResults,
           total,
           greenGroups,
+          allNodes,
           notes: [],
         });
         return;
@@ -260,6 +298,7 @@ function App() {
           sheetResults,
           total,
           greenGroups: [],
+          allNodes: [],
           notes: [
             "Este archivo usa content.xml. Los estilos son limitados, por lo que el filtrado rojo/verde puede no estar disponible.",
           ],
@@ -364,36 +403,85 @@ function App() {
                     { className: "list" },
                     e(
                       "div",
-                      { className: "table-wrap" },
+                      { className: "tabs" },
+                      e(
+                        "button",
+                        {
+                          className: `tab ${activeTab === "desc" ? "active" : ""}`,
+                          onClick: () => setActiveTab("desc"),
+                        },
+                        "DETALLE AGENTES"
+                      ),
+                      e(
+                        "button",
+                        {
+                          className: `tab ${activeTab === "direct" ? "active" : ""}`,
+                          onClick: () => setActiveTab("direct"),
+                        },
+                        "DETALLE MIEMBROS"
+                      )
+                    ),
+                    e(
+                      "div",
+                      { className: "table-wrap", "data-scroll-hint": "true" },
                       e(
                         "table",
                         { className: "table" },
                         e(
                           "thead",
                           null,
-                          e(
-                            "tr",
-                            null,
-                            e("th", null, "Fecha de ingreso"),
-                            e("th", null, "Agente"),
-                            e("th", null, "Monto invertido"),
-                            e("th", null, "Nivel"),
-                            e("th", null, "Total miembros")
-                          )
+                          activeTab === "desc"
+                            ? e(
+                                "tr",
+                                null,
+                                e("th", null, "Fecha de ingreso"),
+                                e("th", null, "Agente"),
+                                e("th", null, "Monto invertido"),
+                                e("th", null, "Nivel"),
+                                e("th", null, "Total miembros")
+                              )
+                            : e(
+                                "tr",
+                                null,
+                                e("th", null, "Fecha de ingreso"),
+                                e("th", null, "Agente"),
+                                e("th", null, "Miembro"),
+                                e("th", null, "Monto invertido"),
+                                e("th", null, "Nivel"),
+                              e("th", null, "Total miembros")
+                              )
                         ),
                         e(
                           "tbody",
                           null,
-                          results.greenGroups.map((group, index) => {
-                            const row = parseGroupRow(group.title, group.count);
+                          (activeTab === "desc"
+                            ? results.greenGroups
+                            : results.allNodes
+                                .filter((n) => !n.isRoot && n.directCount <= 4)
+                                .sort((a, b) => b.parentTotal - a.parentTotal)
+                          ).map((item, index) => {
+                            const row = parseGroupRow(item.title, item.count || 0);
+                            const parentRow = parseGroupRow(item.parentTitle || "", 0);
+                            if (activeTab === "desc") {
+                              return e(
+                                "tr",
+                                { key: `${item.title}-${index}` },
+                                e("td", null, row.ingreso),
+                                e("td", null, row.agente),
+                                e("td", null, row.monto),
+                                e("td", null, row.nivel),
+                                e("td", null, item.count)
+                              );
+                            }
                             return e(
                               "tr",
-                              { key: `${group.sheet}-${index}` },
+                              { key: `${item.title}-${index}` },
                               e("td", null, row.ingreso),
-                              e("td", null, row.agente),
+                              e("td", null, parentRow.agente || maskSensitive(translateTitle(item.parentTitle || ""))),
+                              e("td", null, row.agente || maskSensitive(translateTitle(item.title))),
                               e("td", null, row.monto),
                               e("td", null, row.nivel),
-                              e("td", null, row.total)
+                              e("td", null, item.directCount)
                             );
                           })
                         )
