@@ -113,13 +113,11 @@ function parseGroupRow(rawTitle, totalMembers) {
   const nivelRaw = parts[5] || parts[4] || "";
 
   const agente = maskSensitive(translateTitle(agenteRaw));
-  let monto = montoRaw;
-  if (monto) {
-    monto = monto.replace(/\\s*USDT/gi, "");
-    monto = monto.replace(/U$/i, "");
-    monto = monto.trim();
-    if (monto) {
-      monto = `${monto} USDT`;
+  let monto = "";
+  if (montoRaw) {
+    const match = montoRaw.match(/(\\d+(?:[.,]\\d+)?)/);
+    if (match) {
+      monto = `${match[1]} USDT`;
     }
   }
   const nivel = nivelRaw;
