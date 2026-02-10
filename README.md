@@ -22,6 +22,23 @@ Then visit:
 http://localhost:5173
 ```
 
+## Publicar en GitHub Pages (gratis)
+
+1. En GitHub, ve a tu repo `ImBenji17/xmind-web`.
+2. Abre **Settings → Pages**.
+3. En **Build and deployment**:
+   - **Source**: `Deploy from a branch`
+   - **Branch**: `main`
+   - **Folder**: `/ (root)`
+4. Guarda y espera 1–2 minutos.
+
+Tu sitio quedará publicado en:
+```
+https://ImBenji17.github.io/xmind-web/
+```
+
+Si no ves cambios, haz refresh forzado y espera unos minutos (Pages puede tardar en actualizar).
+
 ## Dependencies (Safari fix)
 
 Safari can block CDN scripts, so this app loads local vendor files.
