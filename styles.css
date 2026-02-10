@@ -120,6 +120,11 @@ input[type="file"] {
   text-transform: uppercase;
   color: var(--muted);
   margin: 0 0 12px;
+  display: inline-block;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(27, 34, 56, 0.7);
+  border: 1px solid #2a355e;
 }
 
 .kv {
@@ -164,9 +169,14 @@ input[type="file"] {
 
 .table-wrap {
   width: 100%;
+  display: block;
   overflow-x: auto;
+  overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
   border-radius: 16px;
+  max-width: 100%;
+  margin: 0;
+  overscroll-behavior-x: contain;
 }
 
 .table-wrap::-webkit-scrollbar {
@@ -221,6 +231,19 @@ input[type="file"] {
   .controls {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .app {
+    padding: 32px 16px 48px;
+  }
+
+  .card {
+    padding: 16px;
+  }
+
+  .table {
+    width: max-content;
+    min-width: 640px;
   }
 
   .kv-item {
