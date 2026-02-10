@@ -363,36 +363,40 @@ function App() {
                     "div",
                     { className: "list" },
                     e(
-                      "table",
-                      { className: "table" },
+                      "div",
+                      { className: "table-wrap" },
                       e(
-                        "thead",
-                        null,
+                        "table",
+                        { className: "table" },
                         e(
-                          "tr",
+                          "thead",
                           null,
-                          e("th", null, "Fecha de ingreso"),
-                          e("th", null, "Agente"),
-                          e("th", null, "Monto invertido"),
-                          e("th", null, "Nivel"),
-                          e("th", null, "Total miembros")
-                        )
-                      ),
-                      e(
-                        "tbody",
-                        null,
-                        results.greenGroups.map((group, index) => {
-                          const row = parseGroupRow(group.title, group.count);
-                          return e(
+                          e(
                             "tr",
-                            { key: `${group.sheet}-${index}` },
-                            e("td", null, row.ingreso),
-                            e("td", null, row.agente),
-                            e("td", null, row.monto),
-                            e("td", null, row.nivel),
-                            e("td", null, row.total)
-                          );
-                        })
+                            null,
+                            e("th", null, "Fecha de ingreso"),
+                            e("th", null, "Agente"),
+                            e("th", null, "Monto invertido"),
+                            e("th", null, "Nivel"),
+                            e("th", null, "Total miembros")
+                          )
+                        ),
+                        e(
+                          "tbody",
+                          null,
+                          results.greenGroups.map((group, index) => {
+                            const row = parseGroupRow(group.title, group.count);
+                            return e(
+                              "tr",
+                              { key: `${group.sheet}-${index}` },
+                              e("td", null, row.ingreso),
+                              e("td", null, row.agente),
+                              e("td", null, row.monto),
+                              e("td", null, row.nivel),
+                              e("td", null, row.total)
+                            );
+                          })
+                        )
                       )
                     )
                   )

@@ -162,6 +162,26 @@ input[type="file"] {
   box-shadow: 0 14px 30px rgba(15, 22, 45, 0.45), 0 0 0 1px rgba(77, 212, 167, 0.08);
 }
 
+.table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 16px;
+}
+
+.table-wrap::-webkit-scrollbar {
+  height: 8px;
+}
+
+.table-wrap::-webkit-scrollbar-thumb {
+  background: #2d3b6b;
+  border-radius: 999px;
+}
+
+.table-wrap::-webkit-scrollbar-track {
+  background: #0f1427;
+}
+
 .table th,
 .table td {
   padding: 10px 12px;
