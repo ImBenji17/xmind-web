@@ -105,20 +105,46 @@ function maskSensitive(text) {
 }
 
 function parseGroupRow(rawTitle, totalMembers) {
-  const cleaned = cleanTitle(rawTitle || "");
-  const parts = cleaned.split(" ");
-  const ingreso = parts[0] || "";
-  const agenteRaw = parts[2] || "";
-  const montoRaw = parts[3] || "";
-  const nivelRaw = parts[5] || parts[4] || "";
+  let cleaned = cleanTitle(rawTitle || "");
+  cleaned = cleaned.replace(/(\d{1,2}\/\d{1,2})(?=\S)/g, "$1 ");
+  cleaned = cleaned.replace(/(\d{1,2}\/\d{1,2})/g, " $1 ");
+  cleaned = cleaned.replace(/\s+/g, " ").trim();
+  const parts = cleaned.split(/\s+/);
+  const ingreso = parts.find((part) => /\d{1,2}\/\d{1,2}/.test(part)) || (parts[0] || "");
+  const emailIndex = parts.findIndex((part) => /@/.test(part));
+  const agenteRaw = emailIndex !== -1 ? parts[emailIndex] : (parts[2] || "");
+  let montoCandidate = "";
+  const amountTokens = [];
+  let lvIndex = parts.findIndex((part) => /^LV\d+/i.test(part));
+  if (lvIndex === -1) lvIndex = parts.length;
+  parts.forEach((part, idx) => {
+    if (/@/.test(part)) return;
+    if (/\d{1,2}\/\d{1,2}/.test(part)) return;
+    if (/^LV\d+/i.test(part)) return;
+    if (!/\d/.test(part)) return;
+    const digits = part.replace(/\D/g, "");
+    if (digits.length < 3 || digits.length > 5) return;
+    amountTokens.push({ part, idx });
+  });
+  if (amountTokens.length) {
+    const beforeLv = amountTokens.filter((t) => t.idx < lvIndex);
+    const pick = (beforeLv.length ? beforeLv[beforeLv.length - 1] : amountTokens[0]).part;
+    const matchNum = pick.match(/(\d+(?:[.,]\d+)?)/);
+    montoCandidate = matchNum ? matchNum[1] : "";
+  }
+  const nivelRaw =
+    parts.find((part) => /^LV\d+/i.test(part)) ||
+    parts.find((part) => /^LV\d+:?$/i.test(part)) ||
+    parts.find((part) => /^LV\d+/i.test(part)) ||
+    parts[parts.length - 1] ||
+    "";
 
   const agente = maskSensitive(translateTitle(agenteRaw));
   let monto = "";
-  if (montoRaw) {
-    const match = montoRaw.match(/(\\d+(?:[.,]\\d+)?)/);
-    if (match) {
-      monto = `${match[1]} USDT`;
-    }
+  const montoRaw = montoCandidate || "";
+  const match = montoRaw.match(/(\d+(?:[.,]\d+)?)/);
+  if (match) {
+    monto = `${match[1]} USDT`;
   }
   const nivel = nivelRaw;
 
