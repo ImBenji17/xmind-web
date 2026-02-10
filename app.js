@@ -1,5 +1,13 @@
-const { useState } = React;
-const e = React.createElement;
+window.__APP_LOADED__ = true;
+const rootEl = document.getElementById("root");
+if (!window.React || !window.ReactDOM) {
+  if (rootEl) {
+    rootEl.innerText = "Error: React no se cargó.";
+  }
+  throw new Error("React no se cargó.");
+}
+const { useState } = window.React;
+const e = window.React.createElement;
 
 function parseHexColor(value) {
   if (!value || typeof value !== "string") return null;
@@ -106,7 +114,7 @@ function maskSensitive(text) {
 
 function normalizeLevel(levelRaw) {
   if (!levelRaw || typeof levelRaw !== "string") return "LV0";
-  const match = levelRaw.match(/LV\\d+/i);
+  const match = levelRaw.match(/LV\d+/i);
   return match ? match[0].toUpperCase() : "LV0";
 }
 
@@ -245,7 +253,7 @@ function App() {
   const [activeTab, setActiveTab] = useState("desc");
 
   const handleFile = async (event) => {
-    const file = event.target.files?.[0];
+    const file = event && event.target && event.target.files ? event.target.files[0] : null;
     if (!file) return;
 
     setLoading(true);
@@ -265,10 +273,59 @@ function App() {
         let total = 0;
         let greenGroups = [];
         let allNodes = [];
+        let rootTitle = "";
 
         sheets.forEach((sheet) => {
           const title = sheet.title || "Sin título";
           const root = sheet.rootTopic || {};
+          const findFirstEmailTitle = (node) => {
+            if (!node || isRedText(node.style)) return "";
+            const t = cleanTitle(node.title || "");
+            if (t && /@/.test(t)) return t;
+            const children = iterChildTopics(node.children || {});
+            for (const child of children) {
+              const found = findFirstEmailTitle(child);
+              if (found) return found;
+            }
+            return "";
+          };
+          const findFirstPhoneTitle = (node) => {
+            if (!node || isRedText(node.style)) return "";
+            const t = cleanTitle(node.title || "");
+            if (t && /\d{6,}/.test(t)) return t;
+            const children = iterChildTopics(node.children || {});
+            for (const child of children) {
+              const found = findFirstPhoneTitle(child);
+              if (found) return found;
+            }
+            return "";
+          };
+          const findFirstValidTitle = (node) => {
+            if (!node || isRedText(node.style)) return "";
+            const t = cleanTitle(node.title || "");
+            if (t && !/^EG\\b/i.test(t)) return t;
+            const children = iterChildTopics(node.children || {});
+            for (const child of children) {
+              const found = findFirstValidTitle(child);
+              if (found) return found;
+            }
+            return "";
+          };
+          if (!rootTitle) {
+            const emailTitle = findFirstEmailTitle(root);
+            if (emailTitle) {
+              const emailToken = emailTitle.split(/\s+/).find((part) => /@/.test(part)) || "";
+              rootTitle = emailToken || emailTitle;
+            } else {
+              const phoneTitle = findFirstPhoneTitle(root);
+              if (phoneTitle) {
+                const phoneMatch = phoneTitle.match(/\\+?\\d[\\d\\s().-]{5,}\\d/);
+                rootTitle = phoneMatch ? phoneMatch[0] : phoneTitle;
+              } else {
+                rootTitle = findFirstValidTitle(root) || "";
+              }
+            }
+          }
           const childCount = countDescendants(root);
           sheetResults.push({ sheet: title, childCount });
           total += childCount;
@@ -284,6 +341,7 @@ function App() {
           total,
           greenGroups,
           allNodes,
+          rootTitle,
           notes: [],
         });
         return;
@@ -299,6 +357,7 @@ function App() {
           total,
           greenGroups: [],
           allNodes: [],
+          rootTitle: "",
           notes: [
             "Este archivo usa content.xml. Los estilos son limitados, por lo que el filtrado rojo/verde puede no estar disponible.",
           ],
@@ -333,12 +392,17 @@ function App() {
     e(
       "div",
       { className: "hero" },
-      e("span", { className: "badge" }, "HERRAMIENTAS XMIND - XDCBIT"),
-      e("h1", null, "Contador de Miembros XMind - XDCBIT"),
+      e("span", { className: "badge" }, "HERRAMIENTAS XMIND"),
+      e("h1", { className: "title" }, "Contador de Miembros XMind"),
       e(
-        "p",
-        { className: "subtitle" },
-        "Sube un archivo XMind y obtén conteos por agente, el total excluye a los miembros que salieron del equipo (texto en rojo)."
+        "div",
+        { className: "instruction-card" },
+        e("div", { className: "instruction-title" }, "INSTRUCCIONES"),
+        e(
+          "p",
+          { className: "subtitle" },
+          "Sube un archivo XMind y obtén conteos por agente, el total excluye a los miembros que salieron del equipo (texto en rojo)."
+        )
       )
     ),
     e(
@@ -387,15 +451,22 @@ function App() {
                 e(
                   "div",
                   { className: "kv-item" },
-                  e("span", null, "Total de miembros"),
-                  e("strong", null, results.total)
+                  e(
+                    "span",
+                    null,
+                    "TOTAL MIEMBROS: " +
+                      maskSensitive(translateTitle(results.rootTitle || "")) +
+                      " (" +
+                      results.total +
+                      ")"
+                  )
                 )
               )
             ),
             e(
               "div",
               null,
-              e("p", { className: "section-title" }, "Cantidad de miembros por agente"),
+              e("p", { className: "section-title" }, "DISTRIBUCION DEL EQUIPO"),
               results.greenGroups.length === 0
                 ? e("div", { className: "note" }, "No se encontraron nodos con fondo verde.")
                 : e(
@@ -448,7 +519,7 @@ function App() {
                                 e("th", null, "Miembro"),
                                 e("th", null, "Monto invertido"),
                                 e("th", null, "Nivel"),
-                              e("th", null, "Total miembros")
+                                e("th", null, "Total miembros")
                               )
                         ),
                         e(
@@ -495,5 +566,12 @@ function App() {
   );
 }
 
-const root = ReactDOM.createRoot(document.getElementById("root"));
-root.render(e(App));
+try {
+  const root = window.ReactDOM.createRoot(rootEl);
+  root.render(e(App));
+} catch (err) {
+  if (rootEl) {
+    rootEl.innerText = `Error: ${err && err.message ? err.message : err}`;
+  }
+  throw err;
+}

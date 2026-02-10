@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Contador de Miembros XMind - XDCBIT</title>
+    <title>Contador de Miembros XMind</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -17,8 +17,36 @@
 
     <script src="./vendor/react.development.js"></script>
     <script src="./vendor/react-dom.development.js"></script>
+    <script>
+      (function () {
+        var root = document.getElementById("root");
+        window.onerror = function (msg, src, line, col) {
+          if (root) {
+            root.innerText =
+              "Error JS: " + msg + " (" + line + ":" + col + ")";
+          }
+        };
+        if (!window.React || !window.ReactDOM) {
+          if (root) {
+            root.innerText = "Error: React no se cargó (vendor).";
+          }
+        } else if (root) {
+          root.innerText = "Cargando...";
+        }
+      })();
+    </script>
     <script src="./vendor/jszip.min.js"></script>
     <script src="./vendor/html2pdf.bundle.min.js"></script>
-    <script src="./app.js"></script>
+    <script src="./app.js?v=20260210"></script>
+    <script>
+      setTimeout(function () {
+        if (!window.__APP_LOADED__) {
+          var root = document.getElementById("root");
+          if (root) {
+            root.innerText = "Error: app.js no se cargo.";
+          }
+        }
+      }, 800);
+    </script>
   </body>
 </html>
